@@ -134,9 +134,14 @@ func (h *Handler) renderLogin(w http.ResponseWriter, errorMsg string, data map[s
 		};
 	</script>`
 
-	// Insert before closing </head> tag
+	// Insert before closing </head> tag and update page title
 	htmlContent := string(content)
 	htmlContent = strings.Replace(htmlContent, "</head>", configScript+"</head>", 1)
+
+	// Also update the page title dynamically
+	pageTitle := h.authProxy.GetConfig().LoginTitle
+	htmlContent = strings.Replace(htmlContent, "<title>Login</title>",
+		"<title>"+template.HTMLEscapeString(pageTitle)+"</title>", 1)
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(htmlContent))
