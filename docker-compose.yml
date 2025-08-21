@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  # Auth Proxy Service
+  auth-proxy:
+    image: ghcr.io/bherbruck/auth-proxy:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    environment:
+      AUTH_PROXY_USERNAME: ${AUTH_PROXY_USERNAME:-admin}
+      AUTH_PROXY_PASSWORD: ${AUTH_PROXY_PASSWORD:-secure-password}
+      # Point to a real external service to test HTTPS capability
+      AUTH_PROXY_TARGET: https://httpbin.org
+      AUTH_PROXY_LOGIN_TITLE: ${AUTH_PROXY_LOGIN_TITLE:-Dockerized Auth Proxy}
+      AUTH_PROXY_COOKIE_SECRET: ${AUTH_PROXY_COOKIE_SECRET:-your-32-character-secret-key-here}
+      AUTH_PROXY_PORT: 8080

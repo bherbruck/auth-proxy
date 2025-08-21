@@ -1,0 +1,77 @@
+# Build artifacts
+auth-proxy
+auth-proxy-refactored
+*.exe
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Docker files (not needed in build context)
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+
+# Environment files
+.env
+.env.*
+
+# Test files
+*_test.go
+test-server.go
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Node.js (if any frontend tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage.out
+coverage.html
+
+# Binaries for programs and plugins
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendor directory (if using vendoring)
+vendor/
+
+# IDE specific files
+.vscode/
+.idea/
+*.iml
+
+# Example and template directories that aren't needed in container
+templates/
+docker/
+examples/
