@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -82,8 +83,14 @@ func (ap *AuthProxy) ValidateCredentials(username, password string) bool {
 func (ap *AuthProxy) CreateSession(w http.ResponseWriter, r *http.Request, username string) error {
 	session, err := ap.store.Get(r, "auth-session")
 	if err != nil {
-		log.Printf("Error getting session: %v", err)
-		return fmt.Errorf("failed to get session: %v", err)
+		// If we have an invalid cookie error, create a new session instead
+		if strings.Contains(err.Error(), "securecookie") {
+			log.Printf("Invalid cookie detected during session creation, creating new session")
+			session = sessions.NewSession(ap.store, "auth-session")
+		} else {
+			log.Printf("Error getting session: %v", err)
+			return fmt.Errorf("failed to get session: %v", err)
+		}
 	}
 
 	session.Values["authenticated"] = true
@@ -117,15 +124,21 @@ func (ap *AuthProxy) DestroySession(w http.ResponseWriter, r *http.Request) erro
 }
 
 // IsAuthenticated checks if the current request has a valid session
-func (ap *AuthProxy) IsAuthenticated(r *http.Request) bool {
+// Returns (authenticated, shouldClearCookie)
+func (ap *AuthProxy) IsAuthenticated(r *http.Request) (bool, bool) {
 	session, err := ap.store.Get(r, "auth-session")
 	if err != nil {
+		// Check if it's an invalid cookie error (e.g., after secret change)
+		if strings.Contains(err.Error(), "securecookie") {
+			log.Printf("Invalid cookie detected (likely due to secret change): %v", err)
+			return false, true // Not authenticated, should clear cookie
+		}
 		log.Printf("Error getting session: %v", err)
-		return false
+		return false, false // Not authenticated, don't clear cookie
 	}
 
 	authenticated, ok := session.Values["authenticated"].(bool)
-	return ok && authenticated
+	return ok && authenticated, false // Return authentication status, don't clear cookie
 }
 
 // RedirectToLogin redirects unauthenticated requests to the login page
@@ -134,10 +147,24 @@ func (ap *AuthProxy) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
+// ClearInvalidCookie clears invalid session cookies from the client
+func (ap *AuthProxy) ClearInvalidCookie(w http.ResponseWriter, r *http.Request) {
+	// Create a new session and immediately invalidate it to clear the cookie
+	session := sessions.NewSession(ap.store, "auth-session")
+	session.Options.MaxAge = -1 // This will delete the cookie
+	if err := session.Save(r, w); err != nil {
+		log.Printf("Error clearing invalid cookie: %v", err)
+	}
+}
+
 // AuthMiddleware wraps HTTP handlers with authentication checks
 func (ap *AuthProxy) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !ap.IsAuthenticated(r) {
+		authenticated, shouldClearCookie := ap.IsAuthenticated(r)
+		if !authenticated {
+			if shouldClearCookie {
+				ap.ClearInvalidCookie(w, r)
+			}
 			ap.RedirectToLogin(w, r)
 			return
 		}
